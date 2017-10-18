@@ -1,0 +1,71 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Base CFT to create an EC2 instance and copy source code down.
+
+Parameters:
+  InstanceType:
+    Description: ASG1 EC2 instance type
+    Type: String
+    Default: t2.micro
+    ConstraintDescription: must be a valid EC2 instance type.
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instances
+    Type: AWS::EC2::KeyPair::KeyName
+    Default: mvbkeypair
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+  AMI:
+    Description: Amazon AMI
+    Type: String
+    Default: ami-e689729e
+  AvailabilityZones:
+    Description: AvailabilityZone to deploy Instance
+    Type: String
+    Default: us-west-2b
+  Subnets:
+    Description: Subnet to deploy Instance in
+    Type: String
+    Default: subnet-fde45db5
+  IAMInstanceProfile:
+    Description: IAM Instance Profile
+    Type: String
+    Default: myS3access
+  InstanceSecurityGroups:
+    Description: Instance Security Groups
+    Type: List<AWS::EC2::SecurityGroup::Id>
+    Default: sg-e9422694
+  OwnerContact: 
+    Description: e-mail address of owner
+    Type: String
+    Default: mvanbeck@hotmail.com
+  Application:
+    Description: Name of the Application
+    Type: String
+    Default: BarrenLandAnalysis
+
+Resources:
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref AMI
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      AvailabilityZone: !Ref AvailabilityZones
+      SubnetId: !Ref Subnets
+      SecurityGroupIds: !Ref InstanceSecurityGroups
+      IamInstanceProfile: !Ref IAMInstanceProfile
+      Tags:
+        - Key: "Name"
+          Value: !Join [ "", [ !Ref "AWS::StackName", "-EC2" ] ]
+        - Key: "OwnerContact"
+          Value: !Ref OwnerContact
+        - Key: "Application"
+          Value: !Ref Application
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          yum update -y
+          aws s3 cp --recursive s3://mvb-us-west-2/barren-land-analysis /home/ec2-user/barren-land-analysis  --region us-west-2
+
+Outputs:
+  EC2InstanceIp:
+    Description: "Private IP address of this Instance:"
+    Value: !GetAtt EC2Instance.PublicIp
